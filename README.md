@@ -1,54 +1,57 @@
 # 🏍️ Road Dash — Motorcycle Combat Racing
 
-A Road Rash-inspired motorcycle combat racing game built with **Godot 4**. Features pseudo-3D road rendering, AI opponents, punch combat, bike upgrades, and touch controls for mobile play.
+A **Road Rash**-inspired motorcycle combat racing game built as a single-file **HTML5 Canvas** application. Zero dependencies, runs in any modern browser, optimized for mobile touch controls. Deployable to GCP Cloud Run.
+
+![Road Dash](https://img.shields.io/badge/HTML5-Canvas-orange) ![Zero Dependencies](https://img.shields.io/badge/Dependencies-None-green) ![Mobile Ready](https://img.shields.io/badge/Mobile-Ready-blue)
 
 ## Features
 
-- 🛣️ Classic pseudo-3D road with curves, hills, and roadside scenery
-- 👊 Punch combat — knock opponents off their bikes
-- 🤖 5 AI opponents with varying difficulty
-- 🏪 Bike shop — upgrade Speed, Acceleration, and Armor
-- 📱 Touch controls for mobile browsers
-- 🎮 Keyboard controls: Arrow/WASD + Z/X to punch
+- 🛣️ Pseudo-3D road with curves, hills, parallax mountains, and sunset sky
+- 🏍️ Pre-rendered motorcycle sprites with detailed rear-view rider (helmet, jacket, exhaust)
+- 👊 Punch combat with screen shake, slow-motion, hit flash, and combo system
+- 🔊 Dynamic sound effects via Web Audio API (punch impacts, whoosh on miss)
+- 🤖 6 AI opponents with distinct colors and steering/avoidance AI
+- 🏪 Bike shop between races — repair, speed boost, armor upgrades
+- 🏁 Visible finish zone with checkerboard road, FINISH billboards, and progress bar
+- 📱 Full-screen mobile layout with transparent touch zones
+- 🎮 Keyboard + touch controls
 - 📈 Progressive difficulty across levels
-- 🏁 Finish line, race positions, and prize money
+- 🌲 6 scenery types: pine trees, palms, oaks, rocks, cacti, telegraph poles, billboards
 
 ## Controls
 
-| Action       | Keyboard         | Touch               |
-|-------------|-----------------|----------------------|
-| Steer Left  | ← / A           | Bottom-left zone     |
-| Steer Right | → / D           | Bottom-left zone     |
-| Accelerate  | ↑ / W           | Bottom-right (GAS)   |
-| Brake       | ↓ / S           | Bottom-right (BRK)   |
-| Punch Left  | Z               | Left-middle zone     |
-| Punch Right | X               | Right-middle zone    |
+| Action | Keyboard | Touch |
+|---|---|---|
+| Steer Left | ← / A | Left zone (◀) |
+| Steer Right | → / D | Left-center zone (▶) |
+| Accelerate | ↑ / W | Right-center zone (▲ GAS) |
+| Brake | ↓ / S | Right zone (▼ BRAKE) |
+| Punch Left | Z | Center-left zone (👊) |
+| Punch Right | X | Center-right zone (👊) |
+| Confirm | Enter / Space | Tap anywhere |
 
-## Play Locally with Godot
+## Play Locally
 
-1. Install [Godot 4.2+](https://godotengine.org/download)
-2. Open the `roaddash/` folder as a Godot project
-3. Press **F5** to run
+No build step, no dependencies — just serve the HTML file:
 
-## Export to HTML5 (Manual)
+```bash
+cd roaddash
+python3 -m http.server 8080
+# Open http://localhost:8080
+```
 
-1. Open in Godot Editor
-2. Go to **Project → Export**
-3. Select **Web** preset
-4. Click **Export Project** → save to `build/index.html`
-5. Serve the `build/` folder with any web server:
-   ```bash
-   cd build && python3 -m http.server 8080
-   ```
+Or use any static file server (Node `npx serve`, VS Code Live Server, etc.)
 
 ## Deploy to GCP Cloud Run
 
 ### Prerequisites
+
 - [Docker](https://docs.docker.com/get-docker/) installed
 - [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated
 - A GCP project with billing enabled
 
 ### Option A: One-command deploy
+
 ```bash
 chmod +x deploy.sh
 GCP_PROJECT_ID=your-project-id ./deploy.sh
@@ -57,7 +60,7 @@ GCP_PROJECT_ID=your-project-id ./deploy.sh
 ### Option B: Step by step
 
 ```bash
-# 1. Build Docker image (includes Godot HTML5 export)
+# 1. Build Docker image
 docker build -t gcr.io/YOUR_PROJECT/road-dash .
 
 # 2. Push to Container Registry
@@ -72,46 +75,47 @@ gcloud run deploy road-dash \
   --allow-unauthenticated
 ```
 
-### Option C: Pre-export (faster Docker build)
+The game will be available at the URL printed by `gcloud run deploy`.
 
-If you already exported the game to `build/`:
+### Docker Local Test
 
-```dockerfile
-# Use this simpler Dockerfile instead:
-FROM nginx:alpine
-RUN rm /etc/nginx/conf.d/default.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY build/ /usr/share/nginx/html/
-EXPOSE 8080
-CMD ["nginx", "-g", "daemon off;"]
+```bash
+docker build -t road-dash .
+docker run -p 8080:8080 road-dash
+# Open http://localhost:8080
 ```
 
 ## Project Structure
 
 ```
 roaddash/
-├── project.godot          # Godot project config
-├── export_presets.cfg     # HTML5 export preset
-├── scenes/
-│   └── main.tscn          # Root scene
-├── scripts/
-│   └── main.gd            # All game logic (~700 lines)
-├── Dockerfile             # Multi-stage: Godot export + nginx
-├── nginx.conf             # Web server config (COOP/COEP headers)
-├── deploy.sh              # One-click Cloud Run deployment
-└── README.md              # This file
+├── index.html       # Complete game (single file, ~1800 lines)
+├── Dockerfile       # nginx:alpine + static file serving
+├── nginx.conf       # Web server config (port 8080, /healthz endpoint)
+├── deploy.sh        # One-click GCP Cloud Run deployment script
+└── README.md        # This file
 ```
 
 ## Architecture
 
-The game uses a **single-scene, single-script** architecture for simplicity:
+Everything lives in a single `index.html` — no external assets, no build tools.
 
-- **State machine**: `MENU → COUNTDOWN → RACING → RESULTS → SHOP → RACING...`
-- **Pseudo-3D rendering**: Classic segment-based road projection (à la OutRun/Road Rash)
-- **Procedural graphics**: Everything drawn with `_draw()` — no image assets needed
-- **Road generation**: Composed of curves, hills, and straight sections with configurable intensity
+- **Rendering**: HTML5 Canvas 2D with pseudo-3D segment-based road projection (technique from [Jake Gordon's JavaScript Racer](https://github.com/jakesgordon/javascript-racer) / [Lou's Pseudo 3D Page](http://www.extentofthejam.com/pseudo/))
+- **Sprites**: Pre-rendered to offscreen canvases at init time (bikes, trees, rocks, billboards)
+- **State machine**: `MENU → COUNTDOWN → RACING → CRASHED/RESULTS → SHOP → next race`
+- **Physics**: Segment-based collision, centrifugal force on curves, off-road deceleration
+- **AI**: Opponents steer around player and each other with lookahead avoidance
+- **Combat**: Hit detection by proximity + direction, with combo multiplier and visual/audio feedback
+- **Mobile**: Transparent touch zones covering bottom 38% of screen, full-screen canvas
+
+## Combat System
+
+- Punch connects when an opponent is within range and on the correct side
+- Successful hits trigger: screen shake, yellow flash, slow-motion freeze, floating "+$" popup
+- Consecutive hits build a **combo multiplier** (2x, 3x...) for bonus cash
+- Knocked opponents spin and slow down significantly
+- Opponents can also punch you, draining your health
 
 ## License
 
 MIT — free to use, modify, and distribute.
-# roaddash
